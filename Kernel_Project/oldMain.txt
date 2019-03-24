@@ -1,0 +1,79 @@
+################## SVC Exceptions #########################
+int main(void)
+{
+	int x = 10, y = 2;
+	
+	int a = svc_service_add(x, y);
+	int b = svc_service_sub(x, y);
+	int c = svc_service_mul(x, y);
+	int d = svc_service_sub(x, y);
+	
+	return 0;
+}
+
+################### Tasks ##############
+#include "osKernel.h"
+
+#define MS_QUANTA (10) //No of ms
+//#define COOP
+#define PERIODIC
+#define NORMAL_SEM
+#define RENDEZ_SEM
+
+uint32_t count0 = 0;
+uint32_t count1 = 0;
+uint32_t count2 = 0;
+uint32_t count3 = 0;
+uint32_t count4 = 0;
+
+void task0(void)
+{
+	while(1)
+	{
+		count0++;
+		#ifdef COOP
+			osThreadYield();
+		#endif
+	}
+}
+
+void task1(void)
+{
+	while(1)
+	{
+		count1++;
+	}
+}
+
+void task2(void)
+{
+	while(1)
+	{
+		count2++;
+	}
+}
+
+void Task4(void)
+{
+		count4++;
+}
+
+void Task3(void)
+{
+		count3++;
+}
+
+int main()
+{
+	osKernelAddThread(0, task0);
+	osKernelAddThread(1, task1);
+	osKernelAddThread(2, task2);
+	
+	osKernelLaunch(MS_QUANTA);
+	
+	while(1)
+	{
+		
+	}
+	return 0;
+}

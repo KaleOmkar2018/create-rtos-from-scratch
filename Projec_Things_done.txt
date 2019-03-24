@@ -1,0 +1,103 @@
+http://www.grimdawn.com/forums/showthread.php?p=408608#post408608
+-Basic GPIO Interfacing
+
+-Design a SysTick Based Timer
+ -Set Desired Frequency using divider
+ -Define SysTick_Handler
+  -C 
+  -Assembly
+ -Function to Get the present tick value
+ -Design a delay function to use this timer to create delays.
+
+-Designing SVC(Supervisory Call) Exceptions
+ -NOT DONE NOW.
+ -SVC Exception or Supervisor Call Exception:
+  -http://www.keil.com/support/man/docs/armcc/armcc_chr1359124969751.htm : __svc
+  -Whenever SVC exception occurs, we have to use Weak SVC Handler known as SVC_Handler(void)
+
+  -Writing Assembly Handler
+   -When an exception occurs, we need to check first which stack is used.
+   -Once, that is done, we select the particular stack and then call a CMSIS-defined(pre-defined) function with name SVC_Handler_C.
+    -This function is written in C and so we need to jump to the location of that function using B(branch) __cpp(SVC_Handler_C)
+   -When we are using Cortex Based Controllers, we need to use CMSIS based function names which are weak aliases and they can be overriden.
+   -Once, we select the STACK and copy the contents in one of the registers, we can call a cpp function using B(branch) __cpp(SVC_Handler_C) where SVC_Handler_C is the name of the CMSIS function declaration.
+  
+  -SVC_args[]
+   -When an exception occurs, we save the STACK FRAME and it will be available to the SVC Handler as the arguments or SVC_args[].
+   -The values from the stack frame which are saved during context switching are saved in the order(indexes of an array(0 - 6): R0 - R3, R12, LR, PC
+   -The 6th index is the PC value. The svc_number is stored as the first byte(we use -2) in the Program Counter Value.
+   -In our case, we have mentioned that our functions will need two arguments.
+    -So, the values that we pass in the C function have to be passed to the system call handler.
+    -This is done in hardware.
+    -We have 5 temporary registers(R0 - R3, R12)
+    -So, lets say we pass two arguments. They will be stored in R0 and R1. As we add arguments, they will be stored in R2, R3 and R12.
+   -Flow Of Code:
+    -When we pass arguments to our function, the code which we wrote in main function will be stored in ROM.
+    -So, when it fetches the required code/instructions, it also needs the data. The local data will be present as a part of the stack frame.
+    -To execute the instructions, we need to store the data into temporary registers and perform operations.
+    -In case of our code, we have used __svc to suggest that we need to call SVC_Handler whenever this add/sub/.. operations are called.
+    -So, when this functions are called, the arguments are passed using R0-R3, R12 registers and after the operations, the result will be stored in one of the registers.
+    -Once we have the final value, the value will be stored on the stack frame of the main function as the value was stored in a local variable!!.
+
+-OS Kernel Files
+ -osKernel.c
+  *** Structures ***
+  -Each task needs a task control block.
+  -Stack pointer is of 32 bits.
+   - Each task should include a stack pointer.
+   - They will be connected in a list so it should point to the task control block of the next task.
+  -So, we have an array of tcb[tcb_size]
+  -currentTCbPtr : points to a tcb in the tcb array.
+  -Each task also has a stack.
+   -Stack Size : 
+    -Select size such that we can store all the necessary registers.
+    -ADD DATA AFTER WHOLE FLOW IS COMPLETE.
+    -Store stack frames in this arrays.
+  
+  -osKernelAddThread()
+   -Takes a thread number(index to an array in tcb_array) and a function pointer.
+   -Make a list
+    -Now,we need to connect the tcbs so that we can keep on calling the next task whenever required based on pointers.
+    -1->2->3->1 so that we can one task after the other.
+    -The last task's tcb will point to the first task's tcb.
+   -Start Task0 as default.
+    -currentTCbPtr(global ptr) points to tcb of task0.
+   -Each Stack Pointer(in tcb) points to 83rd word in the stack frame of that respective task.
+    -Add more info
+   -Kernel Stack Initialization
+    -This modifications are done in the TCB_STACKS[][] array.
+    -Stack Size: 100 words
+     -84th word : stack pointer
+     -100th word:EPSR
+      -Use Thumb Mode
+     -99th word : PC
+      -This should point to the function pointer that we have passed.
+  -osKernelLaunch()
+   -Only function called by the user.
+   -Takes the value of time slice used by the tasks for preemption.
+   
+   -Disable Interrupts
+   -Set To A Desired Frequency for preemption after a given period(1s or 1ms).
+   - http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0337e/Cihcbadd.html
+   -Set PendSv to low priority as it has higher priority compared to SysTick.
+    -So that we get periodic interrupts because of SysTick.
+    -SysTick has higher priority than PendSV so PendSV is served only when SysTick is called.
+   -Call OS_Scheduler_Launch();
+  -OS_Scheduler_Launch()
+   -Implicitly done: Values pushed-> R0 - R3, R12, PC, LR.
+   -Stack Pointer will point to the tcb structure.
+   -Pop the values which are not Implicitly popped.
+   -Pop Link Register.
+   -Stack Pointer will then point to 
+
+-PendSv:
+ -It is used for context switching.
+ 
+-Designing SysTick_Handler
+ -
+
+-FLOW
+ -Add kernel threads
+ -Initialize stack of each kernel thread.
+ -Launch Kernel
+

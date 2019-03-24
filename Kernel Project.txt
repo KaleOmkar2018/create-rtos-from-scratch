@@ -1,0 +1,264 @@
+Important Documents
+-Reference Manual: Registers, Peripherals and everything in details (844 pages)
+-User Manual : Schematics, brief notes (35 pages)
+-Datasheet: Microcontroller Features
+-Cortex M3 Generic User Guide
+
+Environment Setup
+-Create New Project
+-Select CMSIS->CORE and DEVICE->STARTUP
+-Target Options
+ -Target->Crystal Freq: 16 Mhz
+ -Debug->Use ST-Link Debugger
+  -ST-Link Debugger Settings -> Check 'Reset and Run' so that we do not need to reset the board.
+ -Disable Floating Point Hardware:
+  -Floating Point Hardware is present in Target Window.
+
+STM32F4 Specific Data
+-GPIO
+ -Ports A,B,C,D are connected to AHB1 bus.
+-Each port has Clock enable register.
+
+Using Debug View for Controllers:
+-We can use "Call Stack Frame" Window to view where the code is actually executing.
+-Callback Locals can be used to view the values held by the the variables at the point at which the code is stopped.
+-Memory Windows
+ -We can view address of the registers and what value they hold.
+-Clicking on any instruction gives us the starting address of that instruction.
+ -This address can be used to store at any address u want!.
+
+-Using the debugger, we can change the flow of the program.
+ - How? Lets say a stack frame is created, then the PC value stored in the stack frame.
+ - So, we can change the value of the address stored in the stack frame(which will be restored in actual PC register).
+ 
+/* ############### DATA ABOVE NOT TO BE TOUCHED ##################### */
+IRQ Handlers:
+-http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dai0321a/BIHBFEIB.html
+
+https://stackoverflow.com/questions/8236959/what-are-sp-stack-and-lr-in-arm
+https://stackoverflow.com/questions/8236959/what-are-sp-stack-and-lr-in-arm/8238688
+http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0801d/dom1359731145503.html
+
+Stack 
+-Return Values:
+ -LR contains the value EXEC_RETURN based on which the processor checks whether exception handler is completed or not.
+ -The actual PC hardware has to be loaded with the old PC value so that it executes the instruction from that point.
+-In case of an exception, processor saves register information(process specific) on the stack.
+-This information pushing is known as STACKING.
+-The structure of 8 words which is PUSHED is known as STACK FRAME.
+-Floating Point Hardware support plays an important role in the stack frame.
+ -An exception frame for floating pt hardware will have (FPSCR + S0 - S15) additional registers.
+ -Without floating pt hardware, only xPSR + PC + LR + Temporary Registers(R12, R0 - R3)
+-Observe the Stack Frame when an interrupt occurs by adding an breakpoint at SysTick_Handler(),
+ -We observe that at the address of the stack pointer, regsiters are kept in the order of the exception frame.
+ -R0-R1-R2-R3-R12-LR-PC-xPSR
+-The Stack Pointer will always point to the top of the stack!!. So, the new frames which are added will be added at the top of the stack.
+ -As new frames are added to the stack, lower addresses are occupied.
+-How a stack frame operates:
+ -Now, whenever we jump to a subroutine, we always point to the top of the stack frame for that particular routine.
+ -So, when we return, we need to jump back 
+
+
+-One Important Note:
+ -Once a function has ended, it will jump to the value which was stored from LR into the PC.
+ -So, at the end of the function, if we put a value into PC, then it will jump to that function. and LR will not be updated.
+ -LR also stores the value which is checked by the processor.
+
+-Important CM4 Concepts
+ -Registers
+ -Operating Modes
+ 
+-Exception Handler Internals:
+ -Link Register: Contains a code called EXC_RETURN.
+  -It contains return code + return address + other instructions(??)
+  -The 2nd bit(starting from zero) decides whether we need to return to PSP(1) or MSP(0: default)
+
+-Priorities and Exceptions:
+ -Exceptions and threads in descending order of their priorities
+  -Systick
+  -SVC
+  -IRQ
+  -Threads
+-PendSVC Exception:
+ -Used to minimize latency during interrupt service routines.
+ -In absence of PendSVC, Threads will be normally running.
+  -So, if an interrupt occurs, it has higher priority than threads so it should run.
+  -But, due Systick has higher priority than ISR, so again the SysTick Handler will run till all the tasks have run and then ISR will be executed.
+  -So, the time when interrupt service was requested and the time at which it was serviced is large. So, we need to use PendSVC so that whenever peripheral interrupt is generated, PendSVC notifies the core by looking at the NVIC and irq is serviced early.
+-Boot Sequence:
+ -On reset, Registers -> Reset Values
+ -Determine Boot Mode
+  -On reset, processor reads Boot Pins 0 and 1 and selects the required boot mode.
+ -It also places the boot vector table at location zero. The vector table is present in ROM and accessed from ROM.
+ -Fetch value of Stack Pointer from 0x00
+  -The value obtained from 0x00 will be stored in r13 or stack pointer(MSP / PSP)
+ -Fetch PC value from 0x0000 0004 
+  -This value contains the address of the reset handler.
+  -This value will be stored in PC.
+ -Link Register stores 0xffff ffff(why?)
+ -The reset handler will call SystemInit() and then call main() function of the application.
+
+-Threads and Thread Control Block:
+ -There are different types of threads(periodic, event based, main threads)
+ -Each thread has its own set of registers(R0 - R13, PC, LR, SP)
+ -TCB:
+  -Pointer To Stack
+  -Pointer To Next Thread (Why??)
+  -Each thread has an : Thread Id, Thread Status, Thread Period, Thread Burst Time, Thread Priority
+  -Thread States
+  -Running, Ready and Blocked
+
+-Processes Vs Threads
+ 
+-Scheduler:
+ -Preemption
+ -Types of Scheduler:
+  -Preemptive vs Non-preemptive
+  -Static Vs Dynamic
+ -Criteria
+  -Throughput(No of tasks completed per unit time)
+  -Turnaround time(Time for each task to complete)
+  -Response Time(Time when request was raised and response was received)
+  -CPU Utilization
+   -CPU Cycles available depend upon the frequency.
+   -So, a task uses some cycles out of available cycles.
+   -The total CPU utilization depends upon the no of task and the no of cycles each task takes.
+   -A task should use maximum CPU cycles and not waste cycles.
+  -Wait Time(Time spent by a task in ready queue)
+ -Scheduling Design Considerations
+  -Maximum: CPU Utilization, Throughput
+  -Minimum: Context Switching Overhead, Turnaround, Response Time
+ -Parameters For Algorithms
+  -Arrival Time: Thread is available in ready queue
+  -Burst Time: Total Running Time If the task runs once
+  -Wait Time: Time spent in wait queue
+   -We generally find average wait time.
+  -Service Time: The time when the thread is in actual state.
+  -Turnaround Time: Burst Time + Wait Time
+  -Throughput: Depends upon the total burst time
+ -Scheduling Algorithms
+  -FCFS
+   -non-preemptive
+   -Complete the task
+  -Round Robin
+   -preemptive
+   -quantum / time slice / quanta
+   -one task runs for that time slice and then it gets preempted
+   -Choosing quanta:
+    -When the quanta is large, RR acts like FCFS.
+    -When the quanta is small, RR acts like time-sharing.
+     -Context Switching will be more.
+     -So, time quanta should be much greater than context switching time.
+   -Internals of RR Scheduler:
+    -The thread will be executed one after the other. So, we need to maintain a linked list of threads so that we can jump from thread control block of one thread to another.
+    -So, lets assume we have 4 threads.
+     -Each thread will have a Thread Control Block which contains atleast a pointer to its own stack and a pointer to the next Thread Control Block.
+    -The current thread pointer(currentPtr) will point to the thread which is in running state.
+    -This pointer will be used to load values of the current thread into the hardware registers.
+    -When context swithcing takes place, the current thread pointer will save the context of the thread which was preempted into the stack of that thread and then load the details of the new thread or the next thread(pointed by current->nextPt) into the processor.
+  -Weighted Round Robin
+   -preemptive
+   -Varying Quanta:
+    -Assigns weights to each threads(based on priorities)
+    -So, the no of tasks present at one time and the weight of each thread decides how much tym each thread will run!.
+     -Equal priority -> Equal Weights. (In case of Linux, it is nice values)
+   -Varying Frequency:
+    -Here, there will be no weights.
+    -The thread which needs more quanta, we need to keep that thread in the ready queue more times.
+    -The thread gets repeated, the thread has more frequency of occurance.
+ 
+ -Context Switching
+ -Kernel
+
+ -Exclusive Access Instructions
+  -Exclusive Load: LDREX
+  -Exclusive Store: STREX
+
+ -SysTick
+  -SysTick Priority Register
+  -SysTick Setup
+
+-RTOS Scheduler 1
+ -The basic structures required are:
+  -Scheduler
+  -TCB
+  -Stack for each TCB
+ -We need a basic kernel setup which includes:
+  -The functions which we have written will be accessed by the application but they do not know the code.
+   -Launch Kernel(Also consider the scheduler)
+   -Initialize Kernel
+   -Add Threads to the kernel
+  -Types of functions:
+   -Scheduler Related Functions
+    -Launching the scheduler
+ -SYSPRI Register and what it is:
+  -https://www.state-machine.com/quickstart/lesson23.txt: STUDY IN DEPTH
+  -SYSPRI3 register is present at 0xE000ED20.
+  -E0 : Priority of SysTick
+  -0 : Priority of PendSV.
+  -Here, the value of SysTick is higher than PendSV so it has lower priority than PendSV .
+  -It means that PendSV can preempt SysTick.
+ -Context Switching:
+  -view osKernel.s file
+  -On context switch, registers like r0,r1,r2,r3,r12, PC, LR, PSR are saved on the stack.
+   -It is our duty to save the other registers(if required??)
+  -CPSID instruction: Disable interrupts using assembly
+  -When a task starts, Cortex M3 pointer will point to the top of stack frame.
+   -As the thread runs, the stack pointer will move along the stack frame.
+   -So, this position has to be stored in our current thread pointer before context switching.
+    -The current position is only accessible from Cortex Core Stack Pointer.
+   -So, we moved the address or the value stored in currentPtr to a register and saved the latest value of Cortex Core Stack Pointer into the stack pointed by currentPtr. So, that when this task is resumed, it will start from this point!.
+   -So, R0 contains the address of the current tcb which contains the stack pointer and a pointer to the next tcb.
+    -R1 also contains the same value.
+   -Once, stack pointer is saved, we need the current pointer to point to the next tcb.
+    -Now, our tcb has 4 bytes[0 - 3] of stack Pointer and a tcb pointer.
+    -So, our next tcb pointer starts at 4th byte.So, we do Load [r1, #4] into r1.
+   -Stack Working is not clear???
+    -Why does it pop values before branching??
+    -Shouldnt it jump to the new thread and pop the values only when its job is done??
+
+  -Scheduling a task?
+   - 
+  -Context Switching?
+   -
+  -Something are not clear here. Need to study more here. PUSH AND POP: HOW DOES IT HAPPEN AND HOW IT AFFECTS CONTEXT SWITCHING.
+
+  -Adding functions from assembly file
+   -There are no header files for assembly files.
+   -So, we need to export the functions from ".s" file and we need to declare the functions in the header file in which we are using.
+
+ -Cooperative Scheduler:
+  -INTCTL register and Systick Relation:
+   -Check what this register does.
+   -Writing 0x0400 0000 to the register triggers Systick How??
+ 
+ -Writing the Scheduler in C:
+  -The Systick Handler is implemented in assembly.
+  -To make changes in the way periodic scheduler works, we need to write some part of it or the way.
+
+ -Periodic Scheduler:
+  -We have a sysTick Timer which generates an interrupt every 1 ms.
+  -So, if we want to run a task which should run periodically at 100 ms, then we need to mention its period.
+  -We can write a function which will add periodic tasks.
+   -Calling a task periodically is easy.
+   -Add all the periodic tasks to a list.
+   -Iterate over the list and check if the periodic_task is divisible by any of the values and call the function.
+
+ -Semaphores:
+  -Spinlock Semaphore: 
+   -The task will not be blocked on the semaphore.
+   -So, it keeps on checking the value till it is not greater than one.
+    -Waste of CPU Cycles.
+  -Cooperative Semaphore:
+   -The thread will yield when the value is less than one or when it cannot get the semaphore.
+   -CPU cycles are saved.
+  -Rendezvous:
+   -In a normal semaphore, the difference between the values is large.
+    -This is because the normal semaphore waits for receiving its own semaphore.
+    -It increments the value of the semaphore whenever it will receive the semaphore.
+    -There is mismatch between the time when task1 and task2 increment the value of their count variable.
+   -To reduce this difference, rendezvous is used.
+   -Rendezvous makes an attempt to increment the value of the variables at almost the same time.
+   -So, we first acquire our semaphore and then wait till we receive the other semaphore.
+    -Only when both are available, we will proceed to increment or do some simultaneous work!.
+   

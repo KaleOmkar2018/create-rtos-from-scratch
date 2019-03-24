@@ -1,0 +1,138 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000                 AREA             | .text | ,CODE,READONLY,ALIGN=
+2
+    2 00000000                 THUMB
+    3 00000000                 EXTERN           currentTcbPtr
+    4 00000000                 EXPORT           SysTick_Handler
+    5 00000000                 EXPORT           osSchedulerLaunch
+    6 00000000         
+    7 00000000         SysTick_Handler                      ;Saves r0-r3,r12,lr
+                                                            ,psr,pc to the stac
+                                                            k when context swit
+                                                            ch occurs
+    8 00000000         
+    9 00000000 B672            CPSID            I           ;Disable Interrupts
+                                                            
+   10 00000002 E92D 0FF0       PUSH             {R4-R11}    ;R4-R11 have to be 
+                                                            pushed
+   11 00000006         
+   12 00000006 480D            LDR              R0,=currentTcbPtr ;Save locatio
+                                                            n of the current st
+                                                            ack pointer
+   13 00000008 6801            LDR              R1,[R0]     ;Load value into R1
+                                                             from address point
+                                                            ed by R0
+   14 0000000A F8C1 D000       STR              SP,[R1]     ;Save SP in the run
+                                                            ning thread to the 
+                                                            currentPtr(R1
+   15 0000000E 6849            LDR              R1,[R1, #4] ;Load the address o
+                                                            f the next currentT
+                                                            cbPtr-> r1 = curren
+                                                            tPt->next
+   16 00000010 6001            STR              R1,[R0]     ;Store next Ptr int
+                                                            o CurrentTcbPtr
+   17 00000012 F8D1 D000       LDR              SP,[R1]     ;Load Value at R1 i
+                                                            nto SP, this is act
+                                                            ual context switchi
+                                                            ng as this shows wh
+                                                            ere the stack will 
+                                                            point to.
+   18 00000016         
+   19 00000016 E8BD 0FF0       POP              {R4-R11}    ;Why Pop??: Is It n
+                                                            ecessary??
+   20 0000001A B662            CPSIE            I           ;Enable Interrupts
+   21 0000001C         
+   22 0000001C 4770            BX               LR          ;Restore all the va
+                                                            lues.
+   23 0000001E         
+   24 0000001E         osSchedulerLaunch
+   25 0000001E         ;CPSID  I      ;We do not do this because we have done t
+                       his in osKernel.c
+   26 0000001E         
+   27 0000001E 4807            LDR              R0,=currentTcbPtr
+   28 00000020 6802            LDR              R2,[R0]
+   29 00000022 F8D2 D000       LDR              SP,[R2]
+   30 00000026         
+   31 00000026 E8BD 0FF0       POP              {R4-R11}    ;Pop Registers? Why
+                                                            ??
+   32 0000002A BC0F            POP              {R0-R3}
+   33 0000002C F85D CB04       POP              {R12}
+   34 00000030 B001            ADD              SP,SP,#4    ;Dont consider Link
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+                                                             Register and xPSR?
+                                                            ?
+   35 00000032 F85D EB04       POP              {LR}
+   36 00000036 B001            ADD              SP,SP,#4
+   37 00000038         
+   38 00000038 B662            CPSIE            I           ;Enable Interrupts?
+                                                            ?
+   39 0000003A 4770            BX               LR
+   40 0000003C         
+   41 0000003C                 ALIGN
+   42 0000003C                 END
+              00000000 
+Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4.fp --apcs=int
+erwork --depend=.\objects\oskernel_1.d -o.\objects\oskernel_1.o -I.\RTE\_RTOS_F
+rom_Scratch -IC:\Keil_v5\ARM\PACK\ARM\CMSIS\5.3.0\CMSIS\Include -IC:\Keil_v5\AR
+M\PACK\Keil\STM32F4xx_DFP\2.13.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include --pr
+edefine="__EVAL SETA 1" --predefine="__UVISION_VERSION SETA 525" --predefine="_
+RTE_ SETA 1" --predefine="STM32F411xE SETA 1" --list=.\listings\oskernel.lst os
+Kernel.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+ .text  00000000
+
+Symbol:  .text 
+   Definitions
+      At line 1 in file osKernel.s
+   Uses
+      None
+Comment:  .text  unused
+SysTick_Handler 00000000
+
+Symbol: SysTick_Handler
+   Definitions
+      At line 7 in file osKernel.s
+   Uses
+      At line 4 in file osKernel.s
+Comment: SysTick_Handler used once
+osSchedulerLaunch 0000001E
+
+Symbol: osSchedulerLaunch
+   Definitions
+      At line 24 in file osKernel.s
+   Uses
+      At line 5 in file osKernel.s
+Comment: osSchedulerLaunch used once
+3 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+External symbols
+
+currentTcbPtr 00000000
+
+Symbol: currentTcbPtr
+   Definitions
+      At line 3 in file osKernel.s
+   Uses
+      At line 12 in file osKernel.s
+      At line 27 in file osKernel.s
+
+1 symbol
+341 symbols in table
